@@ -328,6 +328,20 @@ extension FileProxy: FileProxying {
       }
     }
   }
+  
+  private func remove(_ url: URL) throws {
+    let fm = FileManager.default
+    
+    let attributes = try fm.attributesOfItem(atPath: url.path)
+    
+    guard
+      let d = attributes[FileAttributeKey.modificationDate] as? Date,
+      (delegate?.validate(self, removing: url, modified: d))! else {
+      return
+    }
+    
+    try fm.removeItem(at: url)
+  }
 
   public func removeFile(matching url: URL) -> URL? {
     guard let localURL = FileLocator(
@@ -336,7 +350,7 @@ extension FileProxy: FileProxying {
     }
     
     do {
-      try FileManager.default.removeItem(at: localURL)
+      try remove(localURL)
     } catch {
       return nil
     }
@@ -344,24 +358,42 @@ extension FileProxy: FileProxying {
     return localURL
   }
   
+  public func removeAll() throws {
+    let dir = try FileLocator.targetDirectory(identifier: identifier)
+    
+    let urls = try FileManager.default.contentsOfDirectory(
+      at: dir, includingPropertiesForKeys: [kCFURLIsRegularFileKey as URLResourceKey],
+      options: .skipsHiddenFiles
+    )
+    
+    for url in urls {
+      try remove(url)
+    }
+  }
+  
+  public func removeAll(keeping urls: [URL]) throws {
+    for url in urls {
+      guard let localURL = try localURL(matching: url) else {
+        continue
+      }
+      try remove(localURL)
+    }
+  }
+  
   private func hasTasks(matching url: URL, hasBlock: @escaping (Bool) -> Void) {
     FileProxy.tasks(in: Array(sessions.values), matching: url) { tasks in
       hasBlock(!tasks.isEmpty)
     }
   }
-
-  @discardableResult
-  public func url(
-    for url: URL,
-    with configuration: DownloadTaskConfiguration? = nil
-  ) throws -> URL {
+  
+  public func localURL(matching url: URL) throws -> URL? {
     // dispatchPrecondition(condition: .notOnQueue(.main))
-
+    
     guard let localURL = FileLocator(
       identifier: identifier, url: url)?.localURL else {
-      throw FileProxyError.invalidURL(url)
+        throw FileProxyError.invalidURL(url)
     }
-
+    
     if #available(iOS 10.0, macOS 10.13, *) {
       os_log("""
         checking: {
@@ -370,7 +402,7 @@ extension FileProxy: FileProxying {
         }
         """, log: log, type: .debug, url as CVarArg, localURL as CVarArg)
     }
-
+    
     do {
       if try localURL.checkResourceIsReachable() {
         if #available(iOS 10.0, macOS 10.13, *) {
@@ -384,6 +416,25 @@ extension FileProxy: FileProxying {
         os_log("not reachable: %{public}@", log: log, type: .debug,
                localURL as CVarArg)
       }
+    }
+    
+    return nil
+  }
+
+  @discardableResult
+  public func url(
+    matching url: URL,
+    start downloading: Bool = true,
+    using configuration: DownloadTaskConfiguration? = nil
+  ) throws -> URL {
+    // dispatchPrecondition(condition: .notOnQueue(.main))
+    
+    if let localURL = try localURL(matching: url) {
+      return localURL
+    }
+    
+    guard downloading else {
+      return url
     }
 
     try checkSize()
@@ -433,9 +484,16 @@ extension FileProxy: FileProxying {
 
     return url
   }
-
-  @discardableResult
-  public func url(for url: URL) throws -> URL {
-    return try self.url(for: url, with: nil)
+  
+  public func url(
+    matching url: URL,
+    using configuration: DownloadTaskConfiguration?
+  ) throws -> URL {
+    return try self.url(matching: url, start: true, using: configuration)
   }
+  
+  public func url(matching url: URL) throws -> URL {
+    return try self.url(matching: url)
+  }
+  
 }
