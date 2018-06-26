@@ -46,23 +46,33 @@ public protocol FileProxying {
     completionHandler: @escaping () -> Void
   )
 
-  /// Returns local file URL matching remote `url` or `nil`.
+  /// Returns a local file URL matching remote `url` if a file has been
+  /// downloaded or `nil` if not.
   func localURL(matching url: URL) throws -> URL?
 
-  /// Returns proxied URL for `url` and, if the file doesn’t exist locally,
+  /// Returns proxied URL matching `url` and if the file doesn’t exist locally,
   /// asks the system to download the file in the background. The proxied URL
   /// is either the local file URL or the original remote URL.
+  ///
+  /// - Parameters:
+  ///   - url: The remote URL to proxy.
+  ///   - downloading: Set to `false` to prevent automatic downloading.
+  ///   - configuration: An optional download task configuration.
+  ///
+  /// - Throws: Invalid URLs or file IO errors could produce errors.
+  ///
+  /// - Returns: A local file URL or the original remote URL.
   @discardableResult func url(
     matching url: URL,
     start downloading: Bool,
     using configuration: DownloadTaskConfiguration?
   ) throws -> URL
-
+  
   @discardableResult func url(
     matching url: URL,
     using configuration: DownloadTaskConfiguration?
-    ) throws -> URL
-
+  ) throws -> URL
+  
   @discardableResult func url(matching url: URL) throws -> URL
 
   /// Removes local file matching `url`.

@@ -357,27 +357,34 @@ extension FileProxy: FileProxying {
 
     return localURL
   }
-
-  public func removeAll() throws {
+  
+  private func ls() throws -> [URL] {
     let dir = try FileLocator.targetDirectory(identifier: identifier)
-
-    let urls = try FileManager.default.contentsOfDirectory(
+    
+    return try FileManager.default.contentsOfDirectory(
       at: dir,
       includingPropertiesForKeys: [kCFURLIsRegularFileKey as URLResourceKey],
       options: .skipsHiddenFiles
     )
-
-    for url in urls {
+  }
+  
+  public func removeAll() throws {
+    for url in try ls() {
       try remove(url)
     }
   }
 
   public func removeAll(keeping urls: [URL]) throws {
-    for url in urls {
-      guard let localURL = try localURL(matching: url) else {
-        continue
-      }
-      try remove(localURL)
+    let locals: [URL] = try urls.compactMap {
+      try localURL(matching: $0)
+    }
+
+    let keep = Set(locals)
+    let all = try ls()
+    let trash = Set(all).subtracting(keep)
+
+    for url in trash {
+      try remove(url)
     }
   }
 
@@ -488,13 +495,13 @@ extension FileProxy: FileProxying {
 
   public func url(
     matching url: URL,
-    using configuration: DownloadTaskConfiguration?
+    using configuration: DownloadTaskConfiguration? = nil
   ) throws -> URL {
     return try self.url(matching: url, start: true, using: configuration)
   }
 
   public func url(matching url: URL) throws -> URL {
-    return try self.url(matching: url)
+    return try self.url(matching: url, using: nil)
   }
 
 }
