@@ -358,6 +358,7 @@ extension FileProxy: FileProxying {
     return localURL
   }
   
+  /// Returns URLs of all cached files.
   private func ls() throws -> [URL] {
     let dir = try FileLocator.targetDirectory(identifier: identifier)
     
@@ -365,7 +366,7 @@ extension FileProxy: FileProxying {
       at: dir,
       includingPropertiesForKeys: [kCFURLIsRegularFileKey as URLResourceKey],
       options: .skipsHiddenFiles
-    )
+    ).map { $0.standardizedFileURL }
   }
   
   public func removeAll() throws {
@@ -373,35 +374,15 @@ extension FileProxy: FileProxying {
       try remove(url)
     }
   }
-
-  public func removeAll(keeping urls: [URL]) throws {
-    let locals: [URL] = try urls.compactMap {
-      try localURL(matching: $0)
-    }
-
-    let keep = Set(locals)
-    let all = try ls()
-    let trash = Set(all).subtracting(keep)
-
-    for url in trash {
-      try remove(url)
-    }
-  }
-
-  private func hasTasks(matching url: URL, hasBlock: @escaping (Bool) -> Void) {
-    FileProxy.tasks(in: Array(sessions.values), matching: url) { tasks in
-      hasBlock(!tasks.isEmpty)
-    }
-  }
-
+  
   public func localURL(matching url: URL) throws -> URL? {
     // dispatchPrecondition(condition: .notOnQueue(.main))
-
+    
     guard let localURL = FileLocator(
       identifier: identifier, url: url)?.localURL else {
         throw FileProxyError.invalidURL(url)
     }
-
+    
     if #available(iOS 10.0, macOS 10.13, *) {
       os_log("""
         checking: {
@@ -410,14 +391,14 @@ extension FileProxy: FileProxying {
         }
         """, log: log, type: .debug, url as CVarArg, localURL as CVarArg)
     }
-
+    
     do {
       if try localURL.checkResourceIsReachable() {
         if #available(iOS 10.0, macOS 10.13, *) {
           os_log("reachable: %{public}@", log: log, type: .debug,
                  localURL as CVarArg)
         }
-        return localURL
+        return localURL.standardizedFileURL
       }
     } catch {
       if #available(iOS 10.0, macOS 10.13, *) {
@@ -425,8 +406,21 @@ extension FileProxy: FileProxying {
                localURL as CVarArg)
       }
     }
-
+    
     return nil
+  }
+
+  public func removeAll(keeping urls: [URL]) throws {
+    let preserved = try urls.compactMap { try localURL(matching: $0) }
+    for url in Set(try ls()).subtracting(preserved) {
+      try remove(url)
+    }
+  }
+
+  private func hasTasks(matching url: URL, hasBlock: @escaping (Bool) -> Void) {
+    FileProxy.tasks(in: Array(sessions.values), matching: url) { tasks in
+      hasBlock(!tasks.isEmpty)
+    }
   }
 
   @discardableResult
