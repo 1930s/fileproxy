@@ -62,7 +62,7 @@ class fileproxyTests: XCTestCase {
     let proxy = FileProxy(delegate: delegate)
 
     let url = URL(string: "http://localhost:8000/urandom")!
-    let found = try! proxy.url(for: url)
+    let found = try! proxy.url(matching: url)
 
     guard !found.isFileURL else {
       fatalError("unexpected state: remove donwloads before testing")
@@ -74,11 +74,18 @@ class fileproxyTests: XCTestCase {
       guard delegate.error == nil else {
         fatalError()
       }
-      let localURL = try! proxy.url(for: url)
+      let localURL = try! proxy.url(matching: url)
       XCTAssert(localURL.isFileURL)
+
+      try! proxy.removeAll()
 
       proxy.invalidate()
     }
+  }
+
+  func testRemoveAll() {
+    let proxy = FileProxy()
+    try! proxy.removeAll()
   }
 
 }

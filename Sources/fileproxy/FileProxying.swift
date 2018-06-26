@@ -39,13 +39,13 @@ public protocol FileProxying {
 
   /// A callback delegate.
   var delegate: FileProxyDelegate? { get set }
-  
+
   /// Handles events for background URL session matching `identifier`.
   func handleEventsForBackgroundURLSession(
     identifier: String,
     completionHandler: @escaping () -> Void
   )
-  
+
   /// Returns local file URL matching remote `url` or `nil`.
   func localURL(matching url: URL) throws -> URL?
 
@@ -57,23 +57,23 @@ public protocol FileProxying {
     start downloading: Bool,
     using configuration: DownloadTaskConfiguration?
   ) throws -> URL
-  
+
   @discardableResult func url(
     matching url: URL,
     using configuration: DownloadTaskConfiguration?
     ) throws -> URL
-  
+
   @discardableResult func url(matching url: URL) throws -> URL
 
   /// Removes local file matching `url`.
   func removeFile(matching url: URL) -> URL?
-  
+
   /// Removes all locals files that have been downloaded.
   func removeAll() throws
-  
+
   /// Removes all local files except the files matching `urls`.
   func removeAll(keeping urls: [URL]) throws
-  
+
   /// Cancels download tasks matching `url`.
   func cancelDownloads(matching url: URL)
 
