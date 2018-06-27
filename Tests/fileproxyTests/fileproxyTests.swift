@@ -38,22 +38,6 @@ class fileproxyTests: XCTestCase {
 
   }
 
-//  func testForUnresolvableURL() {
-//    let exp = self.expectation(description: "url")
-//    exp.assertForOverFulfill = false
-//
-//    let delegate = TestDelegate(expectation: exp)
-//    let proxy = FileProxy(delegate: delegate)
-//
-//    let url = URL(string: "http://abc.de/resources/file")!
-//    let found = try! proxy.url(for: url)
-//
-//    self.waitForExpectations(timeout: 10) { er in
-//      XCTAssertNil(er)
-//      XCTAssertEqual(found, url)
-//    }
-//  }
-
   func testForRresolvableURL() {
     let exp = self.expectation(description: "url")
     exp.assertForOverFulfill = false
